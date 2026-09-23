@@ -1,5 +1,4 @@
 node_modules
 .next
-backend
 .git
 .env*.local

@@ -9,12 +9,16 @@ jobs:
   frontend:
     name: Frontend (lint, build, unit tests)
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
+          cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npm run lint
       - run: npm run build
@@ -64,8 +68,11 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
+          cache-dependency-path: frontend/package-lock.json
+      - working-directory: frontend
+        run: npm ci
+      - working-directory: frontend
+        run: npx playwright install --with-deps chromium
 
       - name: Start the stack
         run: docker compose up -d --build
@@ -82,7 +89,8 @@ jobs:
           echo "Backend never became healthy" >&2
           exit 1
 
-      - run: npx playwright test
+      - working-directory: frontend
+        run: npx playwright test
 
       - name: Dump container logs on failure
         if: failure()

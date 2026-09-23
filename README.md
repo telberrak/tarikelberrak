@@ -18,7 +18,7 @@ locally via Docker Compose.
 Browser
   │  (never talks to the Java API directly)
   ▼
-Next.js (this repo, root)          — Server Components, Server Actions, Route Handlers
+Next.js (frontend/)                — Server Components, Server Actions, Route Handlers
   │  forwards a JWT from an httpOnly cookie as "Authorization: Bearer <token>"
   ▼
 Spring Boot API (backend/)         — REST controllers, Spring Security (JWT), business logic
@@ -28,9 +28,9 @@ PostgreSQL                          — schema managed by Flyway (backend/src/ma
 ```
 
 The browser only ever talks to Next.js. Next.js is the one system that calls the Java
-API, using a `fetch` wrapper (`src/lib/api/client.ts`) that reads the JWT from an
+API, using a `fetch` wrapper (`frontend/src/lib/api/client.ts`) that reads the JWT from an
 httpOnly cookie and attaches it as a Bearer token. Auth forms POST to small Next.js
-Route Handlers (`src/app/api/auth/*`) that proxy to the Java API and set/clear that
+Route Handlers (`frontend/src/app/api/auth/*`) that proxy to the Java API and set/clear that
 cookie — the token itself never reaches client-side JavaScript.
 
 ## Tech stack
@@ -83,7 +83,8 @@ DB_HOST=localhost DB_PORT=5433 DB_PASSWORD=portfolio JWT_SECRET=some-long-random
 ```
 
 ```bash
-# Frontend — from the repo root
+# Frontend — from frontend/
+cd frontend
 npm install
 npm run dev
 ```
@@ -123,7 +124,7 @@ range, volume, 0.75×–2× speed, fullscreen).
 
 To use [Mux](https://mux.com) instead: upload a video, grab its Playback ID, then set
 that lesson's `lesson_assets.provider = 'mux'` and `video_asset_id` to the Playback ID.
-The player component (`src/components/video-player/index.tsx`) picks the right
+The player component (`frontend/src/components/video-player/index.tsx`) picks the right
 implementation automatically — no other code changes needed.
 
 ## Admin panel
@@ -169,15 +170,15 @@ the pattern in `V4__seed_articles_labs.sql` (articles/labs) or `V2__seed_courses
 ## Project structure
 
 ```
-src/                        Next.js frontend (App Router)
-  app/                       routes, including /admin (gated to admins)
-  actions/                   server actions — thin proxies to the Java API
-  components/admin/          admin forms (article/lab/course, curriculum rows)
-  components/                UI components
-  lib/api/client.ts          fetch wrapper that forwards the JWT cookie to the backend
-  lib/auth.ts                getCurrentUser() — calls GET /api/auth/me
-  lib/admin.ts                admin-only reads (list/get, including unpublished)
-  lib/articles.ts, lib/labs.ts, lib/courses.ts   public reads
+frontend/                   Next.js frontend (App Router)
+  src/app/                    routes, including /admin (gated to admins)
+  src/actions/                 server actions — thin proxies to the Java API
+  src/components/admin/        admin forms (article/lab/course, curriculum rows)
+  src/components/              UI components
+  src/lib/api/client.ts        fetch wrapper that forwards the JWT cookie to the backend
+  src/lib/auth.ts              getCurrentUser() — calls GET /api/auth/me
+  src/lib/admin.ts             admin-only reads (list/get, including unpublished)
+  src/lib/articles.ts, src/lib/labs.ts, src/lib/courses.ts   public reads
 
 backend/                    Spring Boot API
   src/main/java/.../domain       JPA entities (Article, Lab, Course, ...)
@@ -197,7 +198,7 @@ server-side session store. Next.js Route Handlers under `/api/auth/*` are the on
 that ever sees the raw token — they set it as an httpOnly, `SameSite=Lax` cookie and the
 browser never touches it directly. Every subsequent server-side call to the Java API
 (Server Components, Server Actions) forwards that cookie as a Bearer token via
-`apiFetch` in `src/lib/api/client.ts`.
+`apiFetch` in `frontend/src/lib/api/client.ts`.
 
 Passwords are hashed with BCrypt (`Spring Security`'s `PasswordEncoder`). Password reset
 uses a single-use, 1-hour-expiry token stored in `password_reset_tokens`.
@@ -217,9 +218,9 @@ would have expired anyway (`RevokedTokenService.pruneExpired`, daily).
 ## Testing
 
 ```bash
-npm test          # Vitest — unit/component tests (frontend)
-npm run test:e2e  # Playwright — full signup → enroll → progress flow, needs the stack running
-cd backend && mvn test   # JUnit — unit + Testcontainers integration tests (backend)
+cd frontend && npm test          # Vitest — unit/component tests (frontend)
+cd frontend && npm run test:e2e  # Playwright — full signup → enroll → progress flow, needs the stack running
+cd backend && mvn test           # JUnit — unit + Testcontainers integration tests (backend)
 ```
 
 The backend's integration tests (`AuthServiceTest`, `CourseServiceTest`,
@@ -265,7 +266,7 @@ deployment-specific remainder).
    - `CORS_ALLOWED_ORIGINS` — your real frontend origin (defense in depth; Next.js is
      the only actual caller of the Java API).
    - `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` — if you want error tracking.
-3. **Containers**: build `backend/Dockerfile` and the root `Dockerfile` (both run as a
+3. **Containers**: build `backend/Dockerfile` and `frontend/Dockerfile` (both run as a
    non-root user already). Use the production overlay for sane restart/resource-limit
    defaults:
    ```bash
@@ -285,5 +286,5 @@ deployment-specific remainder).
    (clearly marked on the pages themselves) — have them reviewed before launch, given
    the paid courses and payment processing on this site.
 8. **SEO**: `robots.txt` and `sitemap.xml` are generated automatically
-   (`src/app/robots.ts`, `src/app/sitemap.ts`) from `NEXT_PUBLIC_SITE_URL` plus the
+   (`frontend/src/app/robots.ts`, `frontend/src/app/sitemap.ts`) from `NEXT_PUBLIC_SITE_URL` plus the
    live list of published articles/labs/courses — nothing to configure.
