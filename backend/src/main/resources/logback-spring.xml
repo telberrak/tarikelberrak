@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!--
+      JSON logs to console, one object per line — feeds straight into any
+      log aggregator (CloudWatch, Datadog, Loki, ...) without a separate
+      parser. request_id comes from RequestIdFilter, which puts it in the
+      MDC for the lifetime of each HTTP request.
+    -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <includeMdcKeyName>request_id</includeMdcKeyName>
+            <customFields>{"service":"portfolio-backend"}</customFields>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
+    <logger name="com.tarikelberrak.portfolio" level="INFO"/>
+    <logger name="org.hibernate.SQL" level="WARN"/>
+</configuration>

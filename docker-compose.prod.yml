@@ -1,0 +1,44 @@
+# Production overlay — use alongside the base file:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# Differences from local dev:
+#   - The db service's host port is no longer published. Prefer pointing
+#     DB_HOST/DB_PORT at an external managed Postgres instead (RDS, Cloud
+#     SQL, etc.) — the bundled Postgres container has no backup/HA story,
+#     see the Production checklist in README.md. If you do keep it, it's
+#     still reachable at db:5432 inside the compose network; only its host
+#     port is removed here.
+#   - Every service gets resource limits and restarts automatically unless
+#     explicitly stopped.
+#   - The actuator/metrics port (9090) is not published to the host at all —
+#     it's reached over the internal compose network only (e.g. by a
+#     Prometheus container added to this same network), never the public
+#     internet.
+
+services:
+  db:
+    restart: unless-stopped
+    ports: !override []
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+
+  backend:
+    restart: unless-stopped
+    ports: !override
+      - "8080:8080"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+
+  frontend:
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M

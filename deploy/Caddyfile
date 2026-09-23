@@ -1,0 +1,30 @@
+# Example production reverse proxy. Caddy handles TLS automatically via
+# Let's Encrypt for any real domain name — swap `example.com` for yours and
+# point its DNS A/AAAA record at this host.
+#
+# Only the frontend is exposed publicly. The backend (:8080) and actuator
+# (:9090) stay on the Docker Compose network — Next.js is the only thing
+# that ever calls the Java API (see README.md → Architecture), so there's
+# nothing else for the public internet to reach.
+#
+# Usage (as its own container alongside the app, on the same Docker network):
+#   docker run -d --name caddy --network personal-portfolio_default \
+#     -p 80:80 -p 443:443 \
+#     -v $PWD/deploy/Caddyfile:/etc/caddy/Caddyfile \
+#     -v caddy_data:/data \
+#     caddy:2-alpine
+#
+# Swap for nginx or a cloud load balancer if you'd rather — this is just the
+# simplest default that needs zero manual certificate handling.
+
+example.com {
+	reverse_proxy frontend:3000
+
+	encode gzip zstd
+
+	header {
+		# Next.js already sets its own security headers (see next.config.ts);
+		# this just ensures they survive the proxy hop.
+		-Server
+	}
+}

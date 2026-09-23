@@ -3,7 +3,8 @@ import { Fraunces, IBM_Plex_Sans, IBM_Plex_Mono, Source_Serif_4 } from "next/fon
 import "./globals.css";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
-import { getCurrentUser } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth";
+import { themeInitScript } from "@/lib/theme-script";
 
 const fraunces = Fraunces({
   variable: "--font-fraunces",
@@ -56,7 +57,11 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       className={`${fraunces.variable} ${plexSans.variable} ${sourceSerif.variable} ${plexMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body className="min-h-full flex flex-col bg-bg text-text-body">
         <Nav user={user} />
         <main className="flex-1">{children}</main>

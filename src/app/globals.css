@@ -17,6 +17,30 @@
   --color-amber-text: #1a1206;
 }
 
+/*
+ * Light theme overrides. `data-theme` is set on <html> by the inline
+ * no-flash script in the root layout (before first paint) and by
+ * ThemeToggle thereafter — see src/components/theme-toggle.tsx.
+ * Accent colors (teal/amber) are darkened relative to the dark theme so
+ * pill/tag/link text stays readable on light surfaces.
+ */
+:root[data-theme="light"] {
+  --color-bg: #f7f8fa;
+  --color-surface: #ffffff;
+  --color-surface-alt: #eef1f5;
+  --color-border: #dde1e7;
+  --color-border-faint: #e8ebef;
+
+  --color-text-primary: #12151c;
+  --color-text-body: #2b323d;
+  --color-text-dim: #555f6b;
+  --color-text-faint: #747d89;
+
+  --color-teal: #0e8e80;
+  --color-amber: #b5730d;
+  --color-amber-text: #fffaf1;
+}
+
 @theme inline {
   --color-bg: var(--color-bg);
   --color-surface: var(--color-surface);
@@ -44,6 +68,10 @@
 
 html {
   color-scheme: dark;
+}
+
+html[data-theme="light"] {
+  color-scheme: light;
 }
 
 body {
