@@ -7,6 +7,11 @@ FROM node:22-alpine AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# NEXT_PUBLIC_* values are inlined at build time, so the public URL has to be
+# known here (layout metadata, robots.txt and sitemap.xml read it). The default
+# keeps local `docker compose up --build` unchanged.
+ARG NEXT_PUBLIC_SITE_URL=http://localhost:3000
+ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
 RUN npm run build
 
 FROM node:22-alpine AS runtime

@@ -1,0 +1,88 @@
+# tarikelberrak.com on the same EC2 instance as Mizan (see docs/DEPLOY_EC2.md).
+#
+# Lives in /srv/tarikelberrak on the server, as its OWN Compose project, so Mizan's deploys
+# (`docker compose up --remove-orphans` in /srv/mizan) never touch it. It reuses three things from
+# Mizan's stack by joining its network (mizan_default):
+#   - Caddy, for HTTPS: it reaches this stack through the aliases below (sites.d/tarikelberrak.caddy)
+#   - PostgreSQL: a dedicated `portfolio` database and role (deploy/ec2/init-db.sh), reached as
+#     `postgres:5432`; Mizan's nightly pg_dumpall backup covers it automatically
+# Values come from /srv/tarikelberrak/.env (see .env.example in this folder).
+name: tarikelberrak
+
+services:
+  backend:
+    image: ${BACKEND_IMAGE:-ghcr.io/telberrak/tarikelberrak-backend}:${TAG:-latest}
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: portfolio
+      DB_USER: portfolio
+      DB_PASSWORD: ${PORTFOLIO_DB_PASSWORD:?set PORTFOLIO_DB_PASSWORD in .env}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      SITE_URL: https://${PORTFOLIO_DOMAIN:?set PORTFOLIO_DOMAIN in .env}
+      CORS_ALLOWED_ORIGINS: https://${PORTFOLIO_DOMAIN}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-no-reply@example.com}
+      CONTACT_NOTIFICATION_EMAIL: ${CONTACT_NOTIFICATION_EMAIL:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: production
+      # The instance is shared with Mizan and PostgreSQL (2 GB): keep the JVM inside its limit.
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=65 -XX:+UseSerialGC
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:9090/actuator/health']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 640M
+    networks:
+      default: {}
+      mizan:
+        # Caddy sends only /api/webhooks/* (Stripe) here; everything else goes through Next.js.
+        aliases: [tarikelberrak-backend]
+
+  frontend:
+    image: ${FRONTEND_IMAGE:-ghcr.io/telberrak/tarikelberrak-frontend}:${TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      API_BASE_URL: http://backend:8080
+      HOSTNAME: 0.0.0.0
+      NODE_OPTIONS: --max-old-space-size=200
+      NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
+      NEXT_PUBLIC_SENTRY_ENVIRONMENT: production
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3000/']
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.75'
+          memory: 320M
+    networks:
+      default: {}
+      mizan:
+        aliases: [tarikelberrak-frontend]
+
+networks:
+  mizan:
+    # Mizan's Compose network (project "mizan" -> "mizan_default"), created by its stack.
+    name: mizan_default
+    external: true

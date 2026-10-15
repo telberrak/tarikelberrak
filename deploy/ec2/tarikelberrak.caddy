@@ -1,0 +1,22 @@
+# Installed as /srv/mizan/sites.d/tarikelberrak.caddy, imported by Mizan's Caddyfile
+# (`import /etc/caddy/sites.d/*.caddy`). Caddy fetches the certificates once DNS for both names
+# points at this server's Elastic IP.
+
+tarikelberrak.com {
+	encode zstd gzip
+
+	# Stripe calls the Java backend directly; everything else is Next.js, which is the only caller
+	# of the rest of the Java API (the actuator on :9090 is never routed).
+	handle /api/webhooks/* {
+		reverse_proxy tarikelberrak-backend:8080
+	}
+	handle {
+		reverse_proxy tarikelberrak-frontend:3000
+	}
+
+	header -Server
+}
+
+www.tarikelberrak.com {
+	redir https://tarikelberrak.com{uri} permanent
+}

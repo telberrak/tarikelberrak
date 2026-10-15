@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   pull_request:
 
 jobs:
@@ -99,3 +99,136 @@ jobs:
       - name: Tear down
         if: always()
         run: docker compose down -v
+
+  # Images for the shared EC2 instance (Graviton = arm64, plus x86), published to GitHub's registry.
+  images:
+    name: Publish images
+    needs: [frontend, backend, e2e]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/tarikelberrak-backend:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/tarikelberrak-backend:latest
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+      - name: Frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: frontend
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: |
+            NEXT_PUBLIC_SITE_URL=${{ vars.PORTFOLIO_SITE_URL || 'https://tarikelberrak.com' }}
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/tarikelberrak-frontend:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/tarikelberrak-frontend:latest
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+
+  # Deploy to the instance Mizan runs on, over SSH, as its own Compose project in
+  # /srv/tarikelberrak. Turned on by the repository variable EC2_DEPLOY=true. If the new version
+  # does not become healthy, the previous one is started again. Mizan's Caddy picks the site up
+  # from /srv/mizan/sites.d (see deploy/ec2/tarikelberrak.caddy).
+  deploy:
+    needs: images
+    if: vars.EC2_DEPLOY == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    concurrency:
+      group: deploy-production-tarikelberrak
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      packages: read
+    env:
+      EC2_HOST: ${{ secrets.EC2_HOST }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: SSH key and known host
+        env:
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_KNOWN_HOSTS: ${{ secrets.EC2_KNOWN_HOSTS }}
+        run: |
+          for name in EC2_HOST EC2_SSH_KEY EC2_KNOWN_HOSTS; do
+            if [ -z "${!name}" ]; then echo "::error::$name is not set"; exit 1; fi
+          done
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$EC2_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$EC2_KNOWN_HOSTS" > ~/.ssh/known_hosts
+      - name: Copy the server configuration
+        run: |
+          scp deploy/ec2/compose.yml deploy/ec2/init-db.sh deploy/ec2/tarikelberrak.caddy "deploy@$EC2_HOST:/srv/tarikelberrak/"
+      - name: Start the new version
+        env:
+          TAG: ${{ github.sha }}
+          REGISTRY_USER: ${{ github.actor }}
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ssh "deploy@$EC2_HOST" TAG="$TAG" REGISTRY_USER="$REGISTRY_USER" REGISTRY_TOKEN="$REGISTRY_TOKEN" bash -s <<'EOF'
+          set -euo pipefail
+          cd /srv/tarikelberrak
+          [ -f .env ] || { echo "/srv/tarikelberrak/.env is missing" >&2; exit 1; }
+          previous="$(sed -n "s/^TAG=//p" .env | tr -d "'\"")"
+          set_tag() { if grep -q '^TAG=' .env; then sed -i "s/^TAG=.*/TAG='$1'/" .env; else echo "TAG='$1'" >> .env; fi; }
+          set_tag "$TAG"
+          printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io -u "$REGISTRY_USER" --password-stdin >/dev/null
+          if ! docker compose pull --quiet; then
+            docker logout ghcr.io >/dev/null
+            set_tag "${previous:-latest}"
+            exit 1
+          fi
+          docker logout ghcr.io >/dev/null
+          if ! docker compose up -d --wait --wait-timeout 180 --remove-orphans; then
+            echo "New version unhealthy; going back to ${previous:-latest}" >&2
+            docker compose logs --tail 60 >&2 || true
+            set_tag "${previous:-latest}"
+            docker compose up -d --wait --wait-timeout 180 || true
+            exit 1
+          fi
+          # Install the Caddy site file only if the whole configuration still validates, so a bad
+          # file can never take Mizan's HTTPS down on its next restart.
+          site=/srv/mizan/sites.d/tarikelberrak.caddy
+          [ -f "$site" ] && cp "$site" "$site.bak"
+          cp tarikelberrak.caddy "$site"
+          if docker compose --project-directory /srv/mizan exec -T caddy caddy validate --config /etc/caddy/Caddyfile >/dev/null; then
+            docker compose --project-directory /srv/mizan exec -T caddy caddy reload --config /etc/caddy/Caddyfile
+            rm -f "$site.bak"
+          else
+            echo "Caddy rejected tarikelberrak.caddy; restoring the previous one" >&2
+            if [ -f "$site.bak" ]; then mv "$site.bak" "$site"; else rm -f "$site"; fi
+            exit 1
+          fi
+          docker image prune -f >/dev/null
+          echo "Running $TAG"
+          EOF
+      - name: Check the live site
+        run: |
+          for i in $(seq 1 12); do
+            curl -fsS -o /dev/null https://tarikelberrak.com/ && exit 0
+            sleep 5
+          done
+          echo "::error::https://tarikelberrak.com did not answer (is DNS pointing at the instance?)" >&2
+          exit 1
