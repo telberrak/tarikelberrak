@@ -13,6 +13,9 @@ password="$(sed -n 's/^PORTFOLIO_DB_PASSWORD=//p' "$env_file" | tr -d "'\"")"
 [ -n "$password" ] || { echo "PORTFOLIO_DB_PASSWORD is missing in $env_file" >&2; exit 1; }
 case "$password" in *[!A-Za-z0-9]*) echo "Use letters and digits only (e.g. openssl rand -hex 24)." >&2; exit 1 ;; esac
 
+# Compose reads the current directory, which the deploy user may not be able to enter.
+cd "$mizan_dir"
+
 psql() { docker compose --project-directory "$mizan_dir" exec -T postgres psql -U mizan -d postgres -v ON_ERROR_STOP=1 "$@"; }
 
 psql <<SQL
