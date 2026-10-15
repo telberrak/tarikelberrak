@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Pill } from "@/components/pill";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatPrice } from "@/lib/utils";
 import type { ArticleFrontmatter } from "@/lib/types";
 
 export function ArticleCard({ article }: { article: ArticleFrontmatter }) {
@@ -10,7 +10,10 @@ export function ArticleCard({ article }: { article: ArticleFrontmatter }) {
       className="group block border-b border-border-faint py-6 first:pt-0 last:border-0"
     >
       <p className="font-mono text-xs uppercase tracking-wide text-text-faint">
-        {formatDate(article.date)} · {article.readMinutes} min read
+        {formatDate(article.date)} · {article.readMinutes} min read ·{" "}
+        <span className={article.isFree ? "" : "text-amber"}>
+          {article.isFree ? "Free" : formatPrice(article.priceCents)}
+        </span>
       </p>
       <h3 className="mt-2 font-display text-xl font-semibold text-text-primary group-hover:text-teal">
         {article.title}
@@ -32,7 +35,10 @@ export function ArticleTeaser({ article }: { article: ArticleFrontmatter }) {
     <div className="flex flex-col gap-1 border-b border-border-faint py-4 last:border-0 md:flex-row md:items-baseline md:justify-between">
       <div>
         <p className="font-mono text-xs uppercase tracking-wide text-text-faint">
-          {formatDate(article.date)} · {article.readMinutes} min read
+          {formatDate(article.date)} · {article.readMinutes} min read ·{" "}
+          <span className={article.isFree ? "" : "text-amber"}>
+            {article.isFree ? "Free" : formatPrice(article.priceCents)}
+          </span>
         </p>
         <Link href={`/articles/${article.slug}`} className="block">
           <h3 className="mt-1 font-display text-lg font-semibold text-text-primary hover:text-teal">

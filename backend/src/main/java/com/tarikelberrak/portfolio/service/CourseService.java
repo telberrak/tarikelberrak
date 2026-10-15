@@ -37,19 +37,24 @@ public class CourseService {
 
     @Transactional(readOnly = true)
     public List<CourseSummaryResponse> listPublished() {
-        return courseRepository.findByPublishedTrueOrderByCreatedAtAsc().stream()
+        return courseRepository.findByPublishedTrueAndArchivedFalseOrderByCreatedAtAsc().stream()
                 .map(this::toSummary)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public CourseSummaryResponse getBySlug(String slug) {
-        return toSummary(findPublishedCourse(slug));
+    public CourseDetailResponse getBySlug(String slug) {
+        Course c = courseRepository.findBySlugAndPublishedTrueAndArchivedFalse(slug)
+                .orElseThrow(() -> ApiException.notFound("Course not found."));
+        return new CourseDetailResponse(
+                c.getId(), c.getSlug(), c.getTitle(), c.getDescription(), c.getLevel().name(),
+                c.getCategory(), c.getPriceCents(), c.getIsFree(), c.getCoverImage(), c.getPublished(),
+                c.getArchived(), c.getContent());
     }
 
     @Transactional(readOnly = true)
     public CurriculumResponse getCurriculum(String courseSlug, UUID userId) {
-        Course course = findPublishedCourse(courseSlug);
+        Course course = findAccessibleCourse(courseSlug, userId);
 
         List<CourseSection> sections = sectionRepository.findByCourseIdOrderByPositionAsc(course.getId());
         List<Lesson> lessons = lessonRepository.findByCourseIdOrderByPositionAsc(course.getId());
@@ -86,7 +91,7 @@ public class CourseService {
 
     @Transactional(readOnly = true)
     public LessonDetailResponse getLessonDetail(String courseSlug, String lessonSlug, UUID userId) {
-        Course course = findPublishedCourse(courseSlug);
+        Course course = findAccessibleCourse(courseSlug, userId);
         List<Lesson> lessons = lessonRepository.findByCourseIdOrderByPositionAsc(course.getId());
 
         Lesson lesson = lessons.stream()
@@ -124,6 +129,16 @@ public class CourseService {
                 nextSlug);
     }
 
+    /** Archived courses stay reachable for people already enrolled, but vanish for everyone else. */
+    private Course findAccessibleCourse(String slug, UUID userId) {
+        Course course = findPublishedCourse(slug);
+        if (Boolean.TRUE.equals(course.getArchived())
+                && (userId == null || !enrollmentRepository.existsByUserIdAndCourseId(userId, course.getId()))) {
+            throw ApiException.notFound("Course not found.");
+        }
+        return course;
+    }
+
     Course findPublishedCourse(String slug) {
         return courseRepository.findBySlugAndPublishedTrue(slug)
                 .orElseThrow(() -> ApiException.notFound("Course not found."));
@@ -132,6 +147,6 @@ public class CourseService {
     private CourseSummaryResponse toSummary(Course c) {
         return new CourseSummaryResponse(
                 c.getId(), c.getSlug(), c.getTitle(), c.getDescription(), c.getLevel().name(),
-                c.getCategory(), c.getPriceCents(), c.getIsFree(), c.getCoverImage(), c.getPublished());
+                c.getCategory(), c.getPriceCents(), c.getIsFree(), c.getCoverImage(), c.getPublished(), c.getArchived());
     }
 }

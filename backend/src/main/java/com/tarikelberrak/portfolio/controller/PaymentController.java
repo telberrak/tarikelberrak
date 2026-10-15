@@ -2,6 +2,7 @@ package com.tarikelberrak.portfolio.controller;
 
 import com.stripe.exception.StripeException;
 import com.tarikelberrak.portfolio.dto.PaymentDtos.CheckoutSessionResponse;
+import com.tarikelberrak.portfolio.domain.ContentType;
 import com.tarikelberrak.portfolio.security.AuthPrincipal;
 import com.tarikelberrak.portfolio.service.PaymentService;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -22,6 +23,22 @@ public class PaymentController {
             @AuthenticationPrincipal AuthPrincipal principal) throws StripeException {
         String url = paymentService.createCheckoutSession(principal.userId(), slug);
         return new CheckoutSessionResponse(url);
+    }
+
+    @PostMapping("/api/articles/{slug}/checkout")
+    public CheckoutSessionResponse checkoutArticle(
+            @PathVariable String slug,
+            @AuthenticationPrincipal AuthPrincipal principal) throws StripeException {
+        return new CheckoutSessionResponse(
+                paymentService.createContentCheckoutSession(principal.userId(), ContentType.article, slug));
+    }
+
+    @PostMapping("/api/labs/{slug}/checkout")
+    public CheckoutSessionResponse checkoutLab(
+            @PathVariable String slug,
+            @AuthenticationPrincipal AuthPrincipal principal) throws StripeException {
+        return new CheckoutSessionResponse(
+                paymentService.createContentCheckoutSession(principal.userId(), ContentType.lab, slug));
     }
 
     @PostMapping("/api/billing/portal")

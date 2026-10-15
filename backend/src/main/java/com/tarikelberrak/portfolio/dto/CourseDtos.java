@@ -15,7 +15,23 @@ public class CourseDtos {
             int priceCents,
             boolean isFree,
             String coverImage,
-            boolean published) {
+            boolean published,
+            boolean archived) {
+    }
+
+    public record CourseDetailResponse(
+            UUID id,
+            String slug,
+            String title,
+            String description,
+            String level,
+            String category,
+            int priceCents,
+            boolean isFree,
+            String coverImage,
+            boolean published,
+            boolean archived,
+            String content) {
     }
 
     public record CourseSectionResponse(UUID id, String title, int position) {

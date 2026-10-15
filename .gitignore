@@ -2,3 +2,6 @@
 
 .DS_Store
 *.pem
+
+# docker compose local overrides (secrets, ADMIN_EMAIL, ...)
+.env

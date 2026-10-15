@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { Pill } from "@/components/pill";
 import { CurriculumList } from "@/components/curriculum-list";
 import { CommentThread } from "@/components/comment-thread";
+import { RichContent } from "@/components/rich-content";
 import { enrollFree } from "@/actions/enroll";
 import { createCheckoutSession } from "@/actions/checkout";
 import { getCourseBySlug, getCourseCurriculum, getEnrollmentStatus } from "@/lib/courses";
@@ -66,6 +67,12 @@ export default async function CourseLandingPage({
           <p className="mt-3 font-mono text-xs uppercase tracking-wide text-text-faint">
             {lessons.length} lessons · {totalMinutes} min total
           </p>
+
+          {course.content.trim() && (
+            <div className="mt-10">
+              <RichContent content={course.content} format="html" />
+            </div>
+          )}
 
           <div className="mt-10">
             <h2 className="font-display text-xl font-semibold text-text-primary">Curriculum</h2>

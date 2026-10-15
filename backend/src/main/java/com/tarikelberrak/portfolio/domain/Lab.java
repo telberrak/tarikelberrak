@@ -58,6 +58,24 @@ public class Lab {
     @Builder.Default
     private Boolean published = true;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean archived = false;
+
+    /** Price in US cents; 0 when free. */
+    @Column(name = "price_cents", nullable = false)
+    @Builder.Default
+    private Integer priceCents = 0;
+
+    @Column(name = "is_free", nullable = false)
+    @Builder.Default
+    private Boolean isFree = true;
+
+    /** "markdown" (legacy/seeded) or "html" (rich-text editor). */
+    @Column(name = "content_format", nullable = false)
+    @Builder.Default
+    private String contentFormat = "html";
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

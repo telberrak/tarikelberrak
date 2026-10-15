@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { ApiError, apiFetch } from "@/lib/api/client";
+import { dollarsToCents } from "@/lib/price";
 
 export interface AdminFormState {
   status: "idle" | "error";
@@ -23,6 +24,9 @@ function buildPayload(formData: FormData) {
     title: formData.get("title"),
     excerpt: formData.get("excerpt"),
     content: formData.get("content"),
+    contentFormat: "html",
+    isFree: formData.get("isFree") === "on",
+    priceCents: dollarsToCents(formData.get("priceDollars")),
     date: formData.get("date") || null,
     readMinutes: Number(formData.get("readMinutes") || 5),
     tags: parseTags(formData.get("tags")),
@@ -80,4 +84,13 @@ export async function deleteArticle(id: string) {
   revalidatePath("/admin/articles");
   revalidatePath("/articles");
   redirect("/admin/articles");
+}
+
+export async function setArticleArchived(id: string, archived: boolean, redirectTo?: string) {
+  await apiFetch(`/api/admin/articles/${id}/${archived ? "archive" : "unarchive"}`, { method: "POST" });
+  revalidatePath("/admin/articles");
+  revalidatePath("/articles");
+  revalidatePath("/sitemap.xml");
+  revalidatePath("/");
+  if (redirectTo) redirect(redirectTo);
 }

@@ -38,6 +38,16 @@ public class AdminLabController {
         return labService.update(id, request);
     }
 
+    @PostMapping("/{id}/archive")
+    public LabDetailResponse archive(@PathVariable UUID id) {
+        return labService.setArchived(id, true);
+    }
+
+    @PostMapping("/{id}/unarchive")
+    public LabDetailResponse unarchive(@PathVariable UUID id) {
+        return labService.setArchived(id, false);
+    }
+
     @DeleteMapping("/{id}")
     public void delete(@PathVariable UUID id) {
         labService.delete(id);

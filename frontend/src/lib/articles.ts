@@ -8,5 +8,5 @@ export async function getAllArticles(): Promise<ArticleFrontmatter[]> {
 }
 
 export async function getArticleBySlug(slug: string): Promise<ArticleWithContent | null> {
-  return apiFetchOrNull<ArticleWithContent>(`/api/articles/${slug}`, { auth: false });
+  return apiFetchOrNull<ArticleWithContent>(`/api/articles/${slug}`);
 }

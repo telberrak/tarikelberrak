@@ -8,7 +8,7 @@ export default function NewArticlePage() {
   return (
     <div>
       <h1 className="font-display text-2xl font-semibold text-text-primary">New article</h1>
-      <div className="mt-6 max-w-2xl">
+      <div className="mt-6 max-w-4xl">
         <ArticleForm action={createArticle} submitLabel="Create article" />
       </div>
     </div>

@@ -53,7 +53,7 @@ public class AdminCourseService {
         return new AdminCourseDetailResponse(
                 course.getId(), course.getSlug(), course.getTitle(), course.getDescription(),
                 course.getLevel().name(), course.getCategory(), course.getPriceCents(), course.getIsFree(),
-                course.getCoverImage(), course.getPublished(),
+                course.getCoverImage(), course.getPublished(), course.getArchived(), course.getContent(),
                 sections.stream().map(s -> new AdminSectionResponse(s.getId(), s.getTitle(), s.getPosition())).toList(),
                 lessons.stream().map(l -> toLessonResponse(l, assetsByLesson.get(l.getId()))).toList());
     }
@@ -69,10 +69,11 @@ public class AdminCourseService {
                 .description(request.description())
                 .level(parseLevel(request.level()))
                 .category(request.category())
-                .priceCents(request.priceCents())
+                .priceCents(ContentAccessService.validatedPriceCents(request.isFree(), request.priceCents()))
                 .isFree(request.isFree())
                 .coverImage(request.coverImage())
                 .published(request.published())
+                .content(request.content() != null ? request.content() : "")
                 .build();
         return toSummary(courseRepository.save(course));
     }
@@ -90,11 +91,19 @@ public class AdminCourseService {
         course.setDescription(request.description());
         course.setLevel(parseLevel(request.level()));
         course.setCategory(request.category());
-        course.setPriceCents(request.priceCents());
+        course.setPriceCents(ContentAccessService.validatedPriceCents(request.isFree(), request.priceCents()));
         course.setIsFree(request.isFree());
         course.setCoverImage(request.coverImage());
         course.setPublished(request.published());
+        if (request.content() != null) course.setContent(request.content());
 
+        return toSummary(courseRepository.save(course));
+    }
+
+    @Transactional
+    public CourseSummaryResponse setArchived(UUID courseId, boolean archived) {
+        Course course = findCourseOrThrow(courseId);
+        course.setArchived(archived);
         return toSummary(courseRepository.save(course));
     }
 
@@ -238,6 +247,6 @@ public class AdminCourseService {
     private CourseSummaryResponse toSummary(Course c) {
         return new CourseSummaryResponse(
                 c.getId(), c.getSlug(), c.getTitle(), c.getDescription(), c.getLevel().name(),
-                c.getCategory(), c.getPriceCents(), c.getIsFree(), c.getCoverImage(), c.getPublished());
+                c.getCategory(), c.getPriceCents(), c.getIsFree(), c.getCoverImage(), c.getPublished(), c.getArchived());
     }
 }

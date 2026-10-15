@@ -1,10 +1,10 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { MDXRemote } from "next-mdx-remote/rsc";
 import { IconTile } from "@/components/icon-tile";
 import { Pill } from "@/components/pill";
 import { CommentThread } from "@/components/comment-thread";
-import { articleMdxComponents } from "@/components/mdx-components";
+import { RichContent } from "@/components/rich-content";
+import { Paywall } from "@/components/paywall";
 import { getLabBySlug } from "@/lib/labs";
 import { getCurrentUser } from "@/lib/auth";
 import type { LabFrontmatter } from "@/lib/types";
@@ -27,8 +27,15 @@ export async function generateMetadata({
   return { title: lab.title, description: lab.excerpt };
 }
 
-export default async function LabPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function LabPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ checkout?: string }>;
+}) {
   const { slug } = await params;
+  const { checkout } = await searchParams;
   const lab = await getLabBySlug(slug);
   if (!lab) notFound();
 
@@ -61,9 +68,24 @@ export default async function LabPage({ params }: { params: Promise<{ slug: stri
 
           <hr className="my-8 border-border-faint" />
 
-          <div className="prose-article">
-            <MDXRemote source={lab.content} components={articleMdxComponents} />
-          </div>
+          {checkout === "success" && !lab.locked && (
+            <div className="mb-6 rounded-[14px] border border-teal/30 bg-surface px-4 py-3 text-sm text-teal">
+              Payment received — thanks! This lab is now unlocked.
+            </div>
+          )}
+          {checkout === "success" && lab.locked && (
+            <div className="mb-6 rounded-[14px] border border-border-faint bg-surface px-4 py-3 text-sm text-text-dim">
+              Payment received — unlocking can take a few seconds. Refresh this page if it still looks locked.
+            </div>
+          )}
+
+          {lab.locked ? (
+            <Paywall kind="lab" slug={slug} priceCents={lab.priceCents} isSignedIn={Boolean(user)} />
+          ) : (
+            <div className="prose-article">
+              <RichContent content={lab.content} format={lab.contentFormat} />
+            </div>
+          )}
 
           <CommentThread
             targetType="lab"

@@ -1,9 +1,13 @@
 package com.tarikelberrak.portfolio.service;
 
 import com.tarikelberrak.portfolio.AbstractIntegrationTest;
+import com.tarikelberrak.portfolio.domain.Article;
 import com.tarikelberrak.portfolio.domain.Course;
 import com.tarikelberrak.portfolio.domain.CourseLevel;
 import com.tarikelberrak.portfolio.domain.User;
+import com.tarikelberrak.portfolio.domain.ContentType;
+import com.tarikelberrak.portfolio.repository.ArticleRepository;
+import com.tarikelberrak.portfolio.repository.ContentPurchaseRepository;
 import com.tarikelberrak.portfolio.repository.CourseRepository;
 import com.tarikelberrak.portfolio.repository.EnrollmentRepository;
 import com.tarikelberrak.portfolio.repository.UserRepository;
@@ -16,6 +20,7 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.HexFormat;
 import java.util.UUID;
 
@@ -40,6 +45,10 @@ class PaymentServiceTest extends AbstractIntegrationTest {
     private UserRepository userRepository;
     @Autowired
     private EnrollmentRepository enrollmentRepository;
+    @Autowired
+    private ArticleRepository articleRepository;
+    @Autowired
+    private ContentPurchaseRepository contentPurchaseRepository;
 
     private Course course;
     private User user;
@@ -86,6 +95,55 @@ class PaymentServiceTest extends AbstractIntegrationTest {
 
         User reloaded = userRepository.findById(user.getId()).orElseThrow();
         assertThat(reloaded.getStripeCustomerId()).isEqualTo("cus_test_123");
+    }
+
+    @Test
+    void handlingAnArticlePurchaseWebhookTwiceRecordsOnePurchase() throws Exception {
+        Article article = articleRepository.save(Article.builder()
+                .slug("paid-article-" + UUID.randomUUID())
+                .title("Paid article")
+                .excerpt("teaser")
+                .content("<p>secret</p>")
+                .articleDate(LocalDate.now())
+                .readMinutes(3)
+                .tags("")
+                .author("Author")
+                .icon("bars")
+                .priceCents(900)
+                .isFree(false)
+                .build());
+
+        long now = Instant.now().getEpochSecond();
+        String payload = """
+                {
+                  "id": "evt_test_article",
+                  "object": "event",
+                  "api_version": "2024-06-20",
+                  "created": %d,
+                  "type": "checkout.session.completed",
+                  "data": {
+                    "object": {
+                      "id": "cs_test_article",
+                      "object": "checkout.session",
+                      "mode": "payment",
+                      "payment_intent": "pi_test_article",
+                      "customer": "cus_test_123",
+                      "customer_details": { "email": "buyer@example.com" },
+                      "metadata": { "user_id": "%s", "content_type": "article", "content_id": "%s" }
+                    }
+                  }
+                }
+                """.formatted(now, user.getId(), article.getId());
+        String signature = sign(payload);
+
+        paymentService.handleWebhook(payload, signature);
+        paymentService.handleWebhook(payload, signature);
+
+        assertThat(contentPurchaseRepository.existsByUserIdAndContentTypeAndContentId(
+                user.getId(), ContentType.article, article.getId())).isTrue();
+        assertThat(contentPurchaseRepository.findAll().stream()
+                .filter(p -> p.getUserId().equals(user.getId()) && p.getContentId().equals(article.getId()))
+                .count()).isEqualTo(1);
     }
 
     private String checkoutSessionCompletedPayload(UUID userId, UUID courseId) {

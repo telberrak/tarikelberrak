@@ -22,7 +22,10 @@ public class ArticleDtos {
             List<String> tags,
             String author,
             String icon,
-            boolean published) {
+            boolean published,
+            boolean archived,
+            int priceCents,
+            boolean isFree) {
     }
 
     public record ArticleDetailResponse(
@@ -36,7 +39,12 @@ public class ArticleDtos {
             List<String> tags,
             String author,
             String icon,
-            boolean published) {
+            boolean published,
+            boolean archived,
+            String contentFormat,
+            int priceCents,
+            boolean isFree,
+            boolean locked) {
     }
 
     public record ArticleWriteRequest(
@@ -50,6 +58,9 @@ public class ArticleDtos {
             List<String> tags,
             @NotBlank String author,
             @NotBlank String icon,
-            boolean published) {
+            boolean published,
+            String contentFormat,
+            @Min(0) int priceCents,
+            boolean isFree) {
     }
 }

@@ -2,6 +2,8 @@
 
 import { useActionState } from "react";
 import type { AdminFormState } from "@/actions/admin-articles";
+import { RichTextEditor } from "@/components/admin/rich-text-editor";
+import { PriceFields } from "@/components/admin/price-fields";
 import type { LabWithContent } from "@/lib/types";
 
 const ICONS = ["bars", "network", "hexagons", "toggle", "rings", "wave"];
@@ -75,16 +77,11 @@ export function LabForm({
       </div>
 
       <div>
-        <label htmlFor="content" className="block text-sm font-medium text-text-body">
-          Content (Markdown/MDX)
-        </label>
-        <textarea
-          id="content"
+        <span className="block text-sm font-medium text-text-body">Content</span>
+        <RichTextEditor
           name="content"
-          required
-          rows={16}
-          defaultValue={initial?.content}
-          className={`${inputClass} font-mono text-[13px]`}
+          initialContent={initial?.content}
+          initialFormat={initial?.contentFormat}
         />
       </div>
 
@@ -153,6 +150,12 @@ export function LabForm({
           />
         </div>
       </div>
+
+      <PriceFields
+        initialIsFree={initial?.isFree ?? true}
+        initialPriceCents={initial?.priceCents ?? 0}
+        error={state.fieldErrors?.priceCents}
+      />
 
       <label className="flex items-center gap-2 text-sm text-text-body">
         <input

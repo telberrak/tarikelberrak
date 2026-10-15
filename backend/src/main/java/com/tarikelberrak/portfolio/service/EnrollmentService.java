@@ -37,7 +37,7 @@ public class EnrollmentService {
 
     @Transactional
     public void enrollFree(UUID userId, String courseSlug) {
-        Course course = courseRepository.findBySlugAndPublishedTrue(courseSlug)
+        Course course = courseRepository.findBySlugAndPublishedTrueAndArchivedFalse(courseSlug)
                 .orElseThrow(() -> ApiException.notFound("Course not found."));
 
         if (!course.getIsFree()) {
@@ -102,7 +102,7 @@ public class EnrollmentService {
             CourseSummaryResponse courseSummary = new CourseSummaryResponse(
                     course.getId(), course.getSlug(), course.getTitle(), course.getDescription(),
                     course.getLevel().name(), course.getCategory(), course.getPriceCents(),
-                    course.getIsFree(), course.getCoverImage(), course.getPublished());
+                    course.getIsFree(), course.getCoverImage(), course.getPublished(), course.getArchived());
 
             return new EnrolledCourseResponse(
                     courseSummary,

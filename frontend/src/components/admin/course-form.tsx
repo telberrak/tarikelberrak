@@ -2,6 +2,8 @@
 
 import { useActionState } from "react";
 import type { AdminFormState } from "@/actions/admin-articles";
+import { RichTextEditor } from "@/components/admin/rich-text-editor";
+import { PriceFields } from "@/components/admin/price-fields";
 import type { CourseSummary } from "@/lib/types";
 
 const LEVELS = ["beginner", "intermediate", "advanced"];
@@ -15,7 +17,7 @@ export function CourseForm({
   submitLabel,
 }: {
   action: (prevState: AdminFormState, formData: FormData) => Promise<AdminFormState>;
-  initial?: CourseSummary;
+  initial?: CourseSummary & { content?: string };
   submitLabel: string;
 }) {
   const [state, formAction, pending] = useActionState<AdminFormState, FormData>(action, {
@@ -60,7 +62,7 @@ export function CourseForm({
 
       <div>
         <label htmlFor="description" className="block text-sm font-medium text-text-body">
-          Description
+          Summary (plain text, shown on course cards)
         </label>
         <textarea
           id="description"
@@ -70,6 +72,11 @@ export function CourseForm({
           defaultValue={initial?.description}
           className={inputClass}
         />
+      </div>
+
+      <div>
+        <span className="block text-sm font-medium text-text-body">About this course</span>
+        <RichTextEditor name="content" initialContent={initial?.content} minHeight={240} />
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2">
@@ -102,20 +109,11 @@ export function CourseForm({
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2">
-        <div>
-          <label htmlFor="priceCents" className="block text-sm font-medium text-text-body">
-            Price (cents)
-          </label>
-          <input
-            id="priceCents"
-            name="priceCents"
-            type="number"
-            min={0}
-            defaultValue={initial?.priceCents ?? 0}
-            className={inputClass}
-          />
-          <p className="mt-1 text-xs text-text-faint">Ignored if &quot;Free&quot; is checked.</p>
-        </div>
+        <PriceFields
+          initialIsFree={initial?.isFree ?? true}
+          initialPriceCents={initial?.priceCents ?? 0}
+          error={state.fieldErrors?.priceCents}
+        />
         <div>
           <label htmlFor="coverImage" className="block text-sm font-medium text-text-body">
             Cover image URL (optional)
@@ -131,15 +129,6 @@ export function CourseForm({
       </div>
 
       <div className="flex gap-6">
-        <label className="flex items-center gap-2 text-sm text-text-body">
-          <input
-            type="checkbox"
-            name="isFree"
-            defaultChecked={initial?.isFree ?? true}
-            className="h-4 w-4 rounded border-border accent-teal"
-          />
-          Free
-        </label>
         <label className="flex items-center gap-2 text-sm text-text-body">
           <input
             type="checkbox"

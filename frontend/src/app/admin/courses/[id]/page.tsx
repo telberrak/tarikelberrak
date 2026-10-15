@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { CourseForm } from "@/components/admin/course-form";
 import { DeleteButton } from "@/components/admin/delete-button";
+import { ArchiveButton } from "@/components/admin/archive-button";
 import { SectionRow } from "@/components/admin/section-row";
 import { LessonRow } from "@/components/admin/lesson-row";
 import { AddSectionForm } from "@/components/admin/add-section-form";
@@ -9,6 +10,7 @@ import { AddLessonForm } from "@/components/admin/add-lesson-form";
 import {
   updateCourse,
   deleteCourse,
+  setCourseArchived,
   createSection,
   updateSection,
   deleteSection,
@@ -31,6 +33,7 @@ export default async function EditCoursePage({ params }: { params: Promise<{ id:
 
   const boundUpdateCourse = updateCourse.bind(null, id);
   const boundDeleteCourse = deleteCourse.bind(null, id);
+  const boundArchive = setCourseArchived.bind(null, id, !course.archived, "/admin/courses");
   const boundCreateSection = createSection.bind(null, id);
   const boundCreateLesson = createLesson.bind(null, id);
 
@@ -38,13 +41,29 @@ export default async function EditCoursePage({ params }: { params: Promise<{ id:
     <div>
       <div className="flex items-center justify-between">
         <h1 className="font-display text-2xl font-semibold text-text-primary">Edit course</h1>
-        <DeleteButton
-          action={boundDeleteCourse}
-          confirmMessage={`Delete "${course.title}"? This removes all its sections and lessons too.`}
-        />
+        <div className="flex gap-2">
+          <ArchiveButton
+            action={boundArchive}
+            archived={course.archived}
+            confirmMessage={
+              course.archived
+                ? undefined
+                : `Archive "${course.title}"? It will be hidden from the catalog and can no longer be purchased or joined; people already enrolled keep access.`
+            }
+          />
+          <DeleteButton
+            action={boundDeleteCourse}
+            confirmMessage={`Delete "${course.title}"? This removes all its sections and lessons too.`}
+          />
+        </div>
       </div>
+      {course.archived && (
+        <p className="mt-4 rounded-[8px] border border-border bg-surface px-4 py-2.5 text-sm text-text-dim">
+          This course is archived: hidden from the catalog and closed to new enrollments. Existing students keep access.
+        </p>
+      )}
 
-      <div className="mt-6 max-w-2xl">
+      <div className="mt-6 max-w-4xl">
         <CourseForm action={boundUpdateCourse} initial={course} submitLabel="Save changes" />
       </div>
 

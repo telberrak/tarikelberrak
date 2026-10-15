@@ -8,5 +8,5 @@ export async function getAllLabs(): Promise<LabFrontmatter[]> {
 }
 
 export async function getLabBySlug(slug: string): Promise<LabWithContent | null> {
-  return apiFetchOrNull<LabWithContent>(`/api/labs/${slug}`, { auth: false });
+  return apiFetchOrNull<LabWithContent>(`/api/labs/${slug}`);
 }

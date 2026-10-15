@@ -39,6 +39,16 @@ public class AdminCourseController {
         return adminCourseService.updateCourse(id, request);
     }
 
+    @PostMapping("/{id}/archive")
+    public CourseSummaryResponse archive(@PathVariable UUID id) {
+        return adminCourseService.setArchived(id, true);
+    }
+
+    @PostMapping("/{id}/unarchive")
+    public CourseSummaryResponse unarchive(@PathVariable UUID id) {
+        return adminCourseService.setArchived(id, false);
+    }
+
     @DeleteMapping("/{id}")
     public void delete(@PathVariable UUID id) {
         adminCourseService.deleteCourse(id);

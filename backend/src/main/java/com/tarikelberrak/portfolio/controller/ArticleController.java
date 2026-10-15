@@ -2,6 +2,8 @@ package com.tarikelberrak.portfolio.controller;
 
 import com.tarikelberrak.portfolio.dto.ArticleDtos.*;
 import com.tarikelberrak.portfolio.service.ArticleService;
+import com.tarikelberrak.portfolio.security.AuthPrincipal;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,7 +24,9 @@ public class ArticleController {
     }
 
     @GetMapping("/{slug}")
-    public ArticleDetailResponse getBySlug(@PathVariable String slug) {
-        return articleService.getPublishedBySlug(slug);
+    public ArticleDetailResponse getBySlug(
+            @PathVariable String slug,
+            @AuthenticationPrincipal AuthPrincipal principal) {
+        return articleService.getPublishedBySlug(slug, principal);
     }
 }

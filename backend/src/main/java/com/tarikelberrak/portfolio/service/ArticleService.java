@@ -1,6 +1,8 @@
 package com.tarikelberrak.portfolio.service;
 
 import com.tarikelberrak.portfolio.domain.Article;
+import com.tarikelberrak.portfolio.domain.ContentType;
+import com.tarikelberrak.portfolio.security.AuthPrincipal;
 import com.tarikelberrak.portfolio.dto.ArticleDtos.*;
 import com.tarikelberrak.portfolio.exception.ApiException;
 import com.tarikelberrak.portfolio.repository.ArticleRepository;
@@ -18,22 +20,27 @@ public class ArticleService {
 
     private final ArticleRepository repository;
 
-    public ArticleService(ArticleRepository repository) {
+    private final ContentAccessService access;
+
+    public ArticleService(ArticleRepository repository, ContentAccessService access) {
         this.repository = repository;
+        this.access = access;
     }
 
     @Transactional(readOnly = true)
     public List<ArticleSummaryResponse> listPublished() {
-        return repository.findByPublishedTrueOrderByArticleDateDesc().stream()
+        return repository.findByPublishedTrueAndArchivedFalseOrderByArticleDateDesc().stream()
                 .map(this::toSummary)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public ArticleDetailResponse getPublishedBySlug(String slug) {
-        Article article = repository.findBySlugAndPublishedTrue(slug)
+    public ArticleDetailResponse getPublishedBySlug(String slug, AuthPrincipal principal) {
+        Article article = repository.findBySlugAndPublishedTrueAndArchivedFalse(slug)
                 .orElseThrow(() -> ApiException.notFound("Article not found."));
-        return toDetail(article);
+        boolean locked = access.isLocked(
+                principal, ContentType.article, article.getId(), article.getIsFree(), article.getPriceCents());
+        return toDetail(article, locked);
     }
 
     @Transactional(readOnly = true)
@@ -56,12 +63,15 @@ public class ArticleService {
                 .title(request.title())
                 .excerpt(request.excerpt())
                 .content(request.content())
+                .contentFormat(normalizeFormat(request.contentFormat(), "html"))
                 .articleDate(request.date() != null ? request.date() : LocalDate.now())
                 .readMinutes(request.readMinutes())
                 .tags(joinTags(request.tags()))
                 .author(request.author())
                 .icon(request.icon())
                 .published(request.published())
+                .priceCents(ContentAccessService.validatedPriceCents(request.isFree(), request.priceCents()))
+                .isFree(request.isFree())
                 .build();
         return toDetail(repository.save(article));
     }
@@ -78,13 +88,23 @@ public class ArticleService {
         article.setTitle(request.title());
         article.setExcerpt(request.excerpt());
         article.setContent(request.content());
+        article.setContentFormat(normalizeFormat(request.contentFormat(), article.getContentFormat()));
         article.setArticleDate(request.date() != null ? request.date() : article.getArticleDate());
         article.setReadMinutes(request.readMinutes());
         article.setTags(joinTags(request.tags()));
         article.setAuthor(request.author());
         article.setIcon(request.icon());
         article.setPublished(request.published());
+        article.setPriceCents(ContentAccessService.validatedPriceCents(request.isFree(), request.priceCents()));
+        article.setIsFree(request.isFree());
 
+        return toDetail(repository.save(article));
+    }
+
+    @Transactional
+    public ArticleDetailResponse setArchived(UUID id, boolean archived) {
+        Article article = findOrThrow(id);
+        article.setArchived(archived);
         return toDetail(repository.save(article));
     }
 
@@ -100,6 +120,18 @@ public class ArticleService {
         return repository.findById(id).orElseThrow(() -> ApiException.notFound("Article not found."));
     }
 
+    private ArticleDetailResponse toDetail(Article a) {
+        return toDetail(a, false);
+    }
+
+    private String normalizeFormat(String requested, String fallback) {
+        if (requested == null || requested.isBlank()) return fallback;
+        if (!requested.equals("html") && !requested.equals("markdown")) {
+            throw ApiException.badRequest("contentFormat must be 'html' or 'markdown'.");
+        }
+        return requested;
+    }
+
     private String joinTags(List<String> tags) {
         return tags == null ? "" : String.join(",", tags);
     }
@@ -112,12 +144,14 @@ public class ArticleService {
     private ArticleSummaryResponse toSummary(Article a) {
         return new ArticleSummaryResponse(
                 a.getId(), a.getSlug(), a.getTitle(), a.getExcerpt(), a.getArticleDate(),
-                a.getReadMinutes(), splitTags(a.getTags()), a.getAuthor(), a.getIcon(), a.getPublished());
+                a.getReadMinutes(), splitTags(a.getTags()), a.getAuthor(), a.getIcon(), a.getPublished(), a.getArchived(),
+                a.getPriceCents(), a.getIsFree());
     }
 
-    private ArticleDetailResponse toDetail(Article a) {
+    private ArticleDetailResponse toDetail(Article a, boolean locked) {
         return new ArticleDetailResponse(
-                a.getId(), a.getSlug(), a.getTitle(), a.getExcerpt(), a.getContent(), a.getArticleDate(),
-                a.getReadMinutes(), splitTags(a.getTags()), a.getAuthor(), a.getIcon(), a.getPublished());
+                a.getId(), a.getSlug(), a.getTitle(), a.getExcerpt(), locked ? "" : a.getContent(), a.getArticleDate(),
+                a.getReadMinutes(), splitTags(a.getTags()), a.getAuthor(), a.getIcon(), a.getPublished(),
+                a.getArchived(), a.getContentFormat(), a.getPriceCents(), a.getIsFree(), locked);
     }
 }

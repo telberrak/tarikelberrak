@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { MDXRemote } from "next-mdx-remote/rsc";
 import { Pill } from "@/components/pill";
 import { CommentThread } from "@/components/comment-thread";
-import { articleMdxComponents } from "@/components/mdx-components";
+import { RichContent } from "@/components/rich-content";
+import { Paywall } from "@/components/paywall";
 import { getArticleBySlug } from "@/lib/articles";
 import { getCurrentUser } from "@/lib/auth";
 import { formatDate } from "@/lib/utils";
@@ -23,8 +23,15 @@ export async function generateMetadata({
   };
 }
 
-export default async function ArticlePage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function ArticlePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ checkout?: string }>;
+}) {
   const { slug } = await params;
+  const { checkout } = await searchParams;
   const article = await getArticleBySlug(slug);
   if (!article) notFound();
 
@@ -61,9 +68,32 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
           <hr className="my-8 border-border-faint" />
 
-          <div>
-            <MDXRemote source={article.content} components={articleMdxComponents} />
-          </div>
+          {checkout === "success" && !article.locked && (
+            <div className="mb-6 rounded-[14px] border border-teal/30 bg-surface px-4 py-3 text-sm text-teal">
+              Payment received — thanks! This article is now unlocked.
+            </div>
+          )}
+          {checkout === "success" && article.locked && (
+            <div className="mb-6 rounded-[14px] border border-border-faint bg-surface px-4 py-3 text-sm text-text-dim">
+              Payment received — unlocking can take a few seconds. Refresh this page if it still looks locked.
+            </div>
+          )}
+
+          {article.locked ? (
+            <div>
+              <p className="mb-6 font-article text-[17px] leading-[1.75] text-text-body">{article.excerpt}</p>
+              <Paywall
+                kind="article"
+                slug={slug}
+                priceCents={article.priceCents}
+                isSignedIn={Boolean(user)}
+              />
+            </div>
+          ) : (
+            <div>
+              <RichContent content={article.content} format={article.contentFormat} />
+            </div>
+          )}
 
           <div className="mt-12 rounded-[14px] border border-border-faint bg-surface p-6">
             <div className="flex items-center gap-3">

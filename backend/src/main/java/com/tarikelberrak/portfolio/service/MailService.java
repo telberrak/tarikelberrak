@@ -49,6 +49,12 @@ public class MailService {
                         + courseTitle + "\" — jump back in from your account dashboard.");
     }
 
+    public void sendContentReceipt(String to, String title, String amountLabel) {
+        send(to, "Purchase confirmed: " + title,
+                "Thanks for your purchase (" + amountLabel + "). You now have full access to \""
+                        + title + "\" - just sign in and open it.");
+    }
+
     private void send(String to, String subject, String text) {
         if (mailSender == null) {
             log.info("[mail:skipped, no SMTP configured] to={} subject={}\n{}", to, subject, text);

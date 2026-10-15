@@ -17,10 +17,17 @@ export interface ArticleFrontmatter {
   author: string;
   icon: IconKey;
   published: boolean;
+  archived: boolean;
+  priceCents: number;
+  isFree: boolean;
 }
+
+export type ContentFormat = "html" | "markdown";
 
 export interface ArticleWithContent extends ArticleFrontmatter {
   content: string;
+  contentFormat: ContentFormat;
+  locked: boolean;
 }
 
 export type LabStatus = "Live" | "In Progress" | "Case Study" | "Prototype";
@@ -38,10 +45,15 @@ export interface LabFrontmatter {
   icon: IconKey;
   date: string;
   published: boolean;
+  archived: boolean;
+  priceCents: number;
+  isFree: boolean;
 }
 
 export interface LabWithContent extends LabFrontmatter {
   content: string;
+  contentFormat: ContentFormat;
+  locked: boolean;
 }
 
 export interface CourseSummary {
@@ -55,6 +67,11 @@ export interface CourseSummary {
   isFree: boolean;
   coverImage: string | null;
   published: boolean;
+  archived: boolean;
+}
+
+export interface CourseDetail extends CourseSummary {
+  content: string;
 }
 
 export interface LessonSummary {

@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { ApiError, apiFetch } from "@/lib/api/client";
+import { dollarsToCents } from "@/lib/price";
 import type { AdminFormState } from "@/actions/admin-articles";
 
 function parseTags(raw: FormDataEntryValue | null): string[] {
@@ -18,6 +19,9 @@ function buildPayload(formData: FormData) {
     title: formData.get("title"),
     excerpt: formData.get("excerpt"),
     content: formData.get("content"),
+    contentFormat: "html",
+    isFree: formData.get("isFree") === "on",
+    priceCents: dollarsToCents(formData.get("priceDollars")),
     status: formData.get("status"),
     category: formData.get("category"),
     tags: parseTags(formData.get("tags")),
@@ -75,4 +79,13 @@ export async function deleteLab(id: string) {
   revalidatePath("/admin/labs");
   revalidatePath("/labs");
   redirect("/admin/labs");
+}
+
+export async function setLabArchived(id: string, archived: boolean, redirectTo?: string) {
+  await apiFetch(`/api/admin/labs/${id}/${archived ? "archive" : "unarchive"}`, { method: "POST" });
+  revalidatePath("/admin/labs");
+  revalidatePath("/labs");
+  revalidatePath("/sitemap.xml");
+  revalidatePath("/");
+  if (redirectTo) redirect(redirectTo);
 }

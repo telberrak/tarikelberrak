@@ -51,6 +51,15 @@ public class Course {
     @Column(nullable = false)
     private Boolean published;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean archived = false;
+
+    /** Rich-text (HTML) course body; `description` is the short plain-text card summary. */
+    @Column(nullable = false, columnDefinition = "text")
+    @Builder.Default
+    private String content = "";
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

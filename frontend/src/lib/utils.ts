@@ -2,7 +2,7 @@ export function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
-export function formatPrice(cents: number, currency = "EUR") {
+export function formatPrice(cents: number, currency = "USD") {
   if (cents === 0) return "Free";
   return new Intl.NumberFormat("en-US", {
     style: "currency",

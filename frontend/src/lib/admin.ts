@@ -42,6 +42,7 @@ export interface AdminLesson {
 }
 
 export interface AdminCourseDetail extends CourseSummary {
+  content: string;
   sections: AdminSection[];
   lessons: AdminLesson[];
 }

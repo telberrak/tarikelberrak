@@ -8,9 +8,9 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface ArticleRepository extends JpaRepository<Article, UUID> {
-    List<Article> findByPublishedTrueOrderByArticleDateDesc();
+    List<Article> findByPublishedTrueAndArchivedFalseOrderByArticleDateDesc();
     List<Article> findAllByOrderByArticleDateDesc();
-    Optional<Article> findBySlugAndPublishedTrue(String slug);
+    Optional<Article> findBySlugAndPublishedTrueAndArchivedFalse(String slug);
     Optional<Article> findBySlug(String slug);
     boolean existsBySlug(String slug);
 }

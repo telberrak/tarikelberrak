@@ -1,6 +1,7 @@
 import "server-only";
 import { apiFetchOrNull } from "@/lib/api/client";
 import type {
+  CourseDetail,
   CourseSectionSummary,
   CourseSummary,
   EnrolledCourse,
@@ -13,8 +14,8 @@ export async function getPublishedCourses(): Promise<CourseSummary[]> {
   return courses ?? [];
 }
 
-export async function getCourseBySlug(slug: string): Promise<CourseSummary | null> {
-  return apiFetchOrNull<CourseSummary>(`/api/courses/${slug}`, { auth: false });
+export async function getCourseBySlug(slug: string): Promise<CourseDetail | null> {
+  return apiFetchOrNull<CourseDetail>(`/api/courses/${slug}`, { auth: false });
 }
 
 export async function getCourseCurriculum(courseSlug: string): Promise<{

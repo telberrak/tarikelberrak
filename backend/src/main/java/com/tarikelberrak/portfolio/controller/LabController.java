@@ -2,6 +2,8 @@ package com.tarikelberrak.portfolio.controller;
 
 import com.tarikelberrak.portfolio.dto.LabDtos.*;
 import com.tarikelberrak.portfolio.service.LabService;
+import com.tarikelberrak.portfolio.security.AuthPrincipal;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,7 +24,9 @@ public class LabController {
     }
 
     @GetMapping("/{slug}")
-    public LabDetailResponse getBySlug(@PathVariable String slug) {
-        return labService.getPublishedBySlug(slug);
+    public LabDetailResponse getBySlug(
+            @PathVariable String slug,
+            @AuthenticationPrincipal AuthPrincipal principal) {
+        return labService.getPublishedBySlug(slug, principal);
     }
 }

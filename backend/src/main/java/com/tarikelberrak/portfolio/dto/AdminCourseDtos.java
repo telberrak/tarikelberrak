@@ -21,7 +21,8 @@ public class AdminCourseDtos {
             @Min(0) int priceCents,
             boolean isFree,
             String coverImage,
-            boolean published) {
+            boolean published,
+            String content) {
     }
 
     public record SectionWriteRequest(
@@ -69,6 +70,8 @@ public class AdminCourseDtos {
             boolean isFree,
             String coverImage,
             boolean published,
+            boolean archived,
+            String content,
             java.util.List<AdminSectionResponse> sections,
             java.util.List<AdminLessonResponse> lessons) {
     }

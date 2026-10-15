@@ -38,6 +38,16 @@ public class AdminArticleController {
         return articleService.update(id, request);
     }
 
+    @PostMapping("/{id}/archive")
+    public ArticleDetailResponse archive(@PathVariable UUID id) {
+        return articleService.setArchived(id, true);
+    }
+
+    @PostMapping("/{id}/unarchive")
+    public ArticleDetailResponse unarchive(@PathVariable UUID id) {
+        return articleService.setArchived(id, false);
+    }
+
     @DeleteMapping("/{id}")
     public void delete(@PathVariable UUID id) {
         articleService.delete(id);

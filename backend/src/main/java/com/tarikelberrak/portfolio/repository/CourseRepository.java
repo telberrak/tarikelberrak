@@ -8,8 +8,9 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface CourseRepository extends JpaRepository<Course, UUID> {
-    List<Course> findByPublishedTrueOrderByCreatedAtAsc();
+    List<Course> findByPublishedTrueAndArchivedFalseOrderByCreatedAtAsc();
     List<Course> findAllByOrderByCreatedAtAsc();
     Optional<Course> findBySlugAndPublishedTrue(String slug);
+    Optional<Course> findBySlugAndPublishedTrueAndArchivedFalse(String slug);
     boolean existsBySlug(String slug);
 }

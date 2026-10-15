@@ -16,12 +16,12 @@ describe("formatPrice", () => {
     expect(formatPrice(0)).toBe("Free");
   });
 
-  it("formats whole-euro amounts without decimals", () => {
-    expect(formatPrice(4900)).toBe("€49");
+  it("formats whole-dollar amounts without decimals", () => {
+    expect(formatPrice(4900)).toBe("$49");
   });
 
   it("formats amounts with cents", () => {
-    expect(formatPrice(4950)).toBe("€49.50");
+    expect(formatPrice(4950)).toBe("$49.50");
   });
 });
 

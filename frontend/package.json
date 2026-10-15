@@ -14,12 +14,19 @@
   "dependencies": {
     "@mux/mux-player-react": "^3.13.4",
     "@sentry/nextjs": "^11.0.0",
+    "@tiptap/extension-text-align": "^3.31.3",
+    "@tiptap/extension-text-style": "^3.31.3",
+    "@tiptap/pm": "^3.31.3",
+    "@tiptap/react": "^3.31.3",
+    "@tiptap/starter-kit": "^3.31.3",
     "client-only": "^0.0.1",
     "date-fns": "^4.4.0",
+    "marked": "^18.0.14",
     "next": "16.3.5",
     "next-mdx-remote": "^6.0.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "sanitize-html": "^2.17.7",
     "server-only": "^0.0.1"
   },
   "devDependencies": {
@@ -30,6 +37,7 @@
     "@types/node": "^24",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/sanitize-html": "^2.16.1",
     "@vitejs/plugin-react": "^6.1.1",
     "eslint": "^9",
     "eslint-config-next": "16.3.5",

@@ -1,5 +1,6 @@
 package com.tarikelberrak.portfolio.dto;
 
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 
@@ -21,7 +22,10 @@ public class LabDtos {
             List<String> tags,
             String icon,
             LocalDate date,
-            boolean published) {
+            boolean published,
+            boolean archived,
+            int priceCents,
+            boolean isFree) {
     }
 
     public record LabDetailResponse(
@@ -35,7 +39,12 @@ public class LabDtos {
             List<String> tags,
             String icon,
             LocalDate date,
-            boolean published) {
+            boolean published,
+            boolean archived,
+            String contentFormat,
+            int priceCents,
+            boolean isFree,
+            boolean locked) {
     }
 
     public record LabWriteRequest(
@@ -49,6 +58,9 @@ public class LabDtos {
             List<String> tags,
             @NotBlank String icon,
             LocalDate date,
-            boolean published) {
+            boolean published,
+            String contentFormat,
+            @Min(0) int priceCents,
+            boolean isFree) {
     }
 }

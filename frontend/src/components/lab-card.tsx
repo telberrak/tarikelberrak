@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { IconTile } from "@/components/icon-tile";
 import { Pill } from "@/components/pill";
+import { formatPrice } from "@/lib/utils";
 import type { LabFrontmatter } from "@/lib/types";
 
 const statusTone: Record<LabFrontmatter["status"], "teal" | "amber" | "default"> = {
@@ -18,9 +19,12 @@ export function LabCard({ lab }: { lab: LabFrontmatter }) {
     >
       <IconTile icon={lab.icon} />
       <div className="flex flex-1 flex-col p-5">
-        <Pill tone={statusTone[lab.status]} className="self-start">
-          {lab.status}
-        </Pill>
+        <div className="flex items-center justify-between gap-2">
+          <Pill tone={statusTone[lab.status]}>{lab.status}</Pill>
+          <span className={`font-mono text-xs uppercase ${lab.isFree ? "text-text-faint" : "text-amber"}`}>
+            {lab.isFree ? "Free" : formatPrice(lab.priceCents)}
+          </span>
+        </div>
         <h3 className="mt-3 font-display text-lg font-semibold text-text-primary group-hover:text-teal">
           {lab.title}
         </h3>

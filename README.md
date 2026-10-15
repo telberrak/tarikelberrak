@@ -152,15 +152,20 @@ link then appears in the account menu.
 
 ### Content model
 
-- **Articles/labs**: `content` is stored as Markdown/MDX text and rendered with
-  `next-mdx-remote` the same way either way — only where it lives changed (Postgres
-  instead of files). `tags` are stored as a comma-separated column and split/joined in
-  the API layer; `icon` must be one of `bars | network | hexagons | toggle | rings | wave`.
-- **Courses**: unchanged from the database schema described below — the admin UI is
-  just a front end over the same `courses` / `course_sections` / `lessons` /
-  `lesson_assets` tables.
-- Draft support: articles, labs and courses all have a `published` flag. Unpublished
-  items are only visible in `/admin`, never on the public site.
+- **Articles/labs**: written in a rich-text editor (bold/italic/underline, headings, lists,
+  quotes, code, links, alignment, text size, text colour and highlight). `content` is stored
+  as HTML with a `content_format` column: rows created before the editor are `markdown` and
+  still render as before; opening one in the editor converts it to formatted text, and saving
+  stores it as `html`. HTML is always sanitized on render (`frontend/src/lib/sanitize.ts`).
+  `tags` are a comma-separated column; `icon` must be one of
+  `bars | network | hexagons | toggle | rings | wave`.
+- **Courses**: `description` is a short plain-text summary for catalog cards; the rich
+  "About this course" body is `courses.content` (HTML) and shows on the course page above the
+  curriculum. Sections and lessons are edited inline on the same page.
+- **Published vs archived**: `published` is the draft switch. **Archive** (list row or edit
+  page) hides an item from the public site and moves it to the *Archived* tab; **Restore**
+  brings it back. Archived courses can't be bought or joined, but people already enrolled keep
+  access to the lessons.
 
 If you'd rather seed content directly (e.g. for a fresh environment, or bulk import),
 add a new Flyway migration under `backend/src/main/resources/db/migration/` following

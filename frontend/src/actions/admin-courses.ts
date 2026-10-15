@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { ApiError, apiFetch } from "@/lib/api/client";
+import { dollarsToCents } from "@/lib/price";
 import type { AdminFormState } from "@/actions/admin-articles";
 
 function buildCoursePayload(formData: FormData) {
@@ -10,9 +11,10 @@ function buildCoursePayload(formData: FormData) {
     slug: formData.get("slug"),
     title: formData.get("title"),
     description: formData.get("description"),
+    content: formData.get("content") ?? "",
     level: formData.get("level"),
     category: formData.get("category"),
-    priceCents: Number(formData.get("priceCents") || 0),
+    priceCents: dollarsToCents(formData.get("priceDollars")),
     isFree: formData.get("isFree") === "on",
     coverImage: formData.get("coverImage") || null,
     published: formData.get("published") === "on",
@@ -138,4 +140,13 @@ export async function deleteLesson(courseId: string, lessonId: string) {
   await apiFetch(`/api/admin/courses/lessons/${lessonId}`, { method: "DELETE" });
   revalidatePath(`/admin/courses/${courseId}`);
   revalidatePath("/learn");
+}
+
+export async function setCourseArchived(id: string, archived: boolean, redirectTo?: string) {
+  await apiFetch(`/api/admin/courses/${id}/${archived ? "archive" : "unarchive"}`, { method: "POST" });
+  revalidatePath("/admin/courses");
+  revalidatePath("/learn");
+  revalidatePath("/sitemap.xml");
+  revalidatePath("/");
+  if (redirectTo) redirect(redirectTo);
 }

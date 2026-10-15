@@ -8,9 +8,9 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface LabRepository extends JpaRepository<Lab, UUID> {
-    List<Lab> findByPublishedTrueOrderByLabDateDesc();
+    List<Lab> findByPublishedTrueAndArchivedFalseOrderByLabDateDesc();
     List<Lab> findAllByOrderByLabDateDesc();
-    Optional<Lab> findBySlugAndPublishedTrue(String slug);
+    Optional<Lab> findBySlugAndPublishedTrueAndArchivedFalse(String slug);
     Optional<Lab> findBySlug(String slug);
     boolean existsBySlug(String slug);
 }

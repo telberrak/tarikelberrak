@@ -1,6 +1,8 @@
 package com.tarikelberrak.portfolio.service;
 
 import com.tarikelberrak.portfolio.domain.Lab;
+import com.tarikelberrak.portfolio.domain.ContentType;
+import com.tarikelberrak.portfolio.security.AuthPrincipal;
 import com.tarikelberrak.portfolio.dto.LabDtos.*;
 import com.tarikelberrak.portfolio.exception.ApiException;
 import com.tarikelberrak.portfolio.repository.LabRepository;
@@ -18,20 +20,25 @@ public class LabService {
 
     private final LabRepository repository;
 
-    public LabService(LabRepository repository) {
+    private final ContentAccessService access;
+
+    public LabService(LabRepository repository, ContentAccessService access) {
         this.repository = repository;
+        this.access = access;
     }
 
     @Transactional(readOnly = true)
     public List<LabSummaryResponse> listPublished() {
-        return repository.findByPublishedTrueOrderByLabDateDesc().stream().map(this::toSummary).toList();
+        return repository.findByPublishedTrueAndArchivedFalseOrderByLabDateDesc().stream().map(this::toSummary).toList();
     }
 
     @Transactional(readOnly = true)
-    public LabDetailResponse getPublishedBySlug(String slug) {
-        Lab lab = repository.findBySlugAndPublishedTrue(slug)
+    public LabDetailResponse getPublishedBySlug(String slug, AuthPrincipal principal) {
+        Lab lab = repository.findBySlugAndPublishedTrueAndArchivedFalse(slug)
                 .orElseThrow(() -> ApiException.notFound("Lab not found."));
-        return toDetail(lab);
+        boolean locked = access.isLocked(
+                principal, ContentType.lab, lab.getId(), lab.getIsFree(), lab.getPriceCents());
+        return toDetail(lab, locked);
     }
 
     @Transactional(readOnly = true)
@@ -54,12 +61,15 @@ public class LabService {
                 .title(request.title())
                 .excerpt(request.excerpt())
                 .content(request.content())
+                .contentFormat(normalizeFormat(request.contentFormat(), "html"))
                 .status(request.status())
                 .category(request.category())
                 .tags(joinTags(request.tags()))
                 .icon(request.icon())
                 .labDate(request.date() != null ? request.date() : LocalDate.now())
                 .published(request.published())
+                .priceCents(ContentAccessService.validatedPriceCents(request.isFree(), request.priceCents()))
+                .isFree(request.isFree())
                 .build();
         return toDetail(repository.save(lab));
     }
@@ -76,13 +86,23 @@ public class LabService {
         lab.setTitle(request.title());
         lab.setExcerpt(request.excerpt());
         lab.setContent(request.content());
+        lab.setContentFormat(normalizeFormat(request.contentFormat(), lab.getContentFormat()));
         lab.setStatus(request.status());
         lab.setCategory(request.category());
         lab.setTags(joinTags(request.tags()));
         lab.setIcon(request.icon());
         lab.setLabDate(request.date() != null ? request.date() : lab.getLabDate());
         lab.setPublished(request.published());
+        lab.setPriceCents(ContentAccessService.validatedPriceCents(request.isFree(), request.priceCents()));
+        lab.setIsFree(request.isFree());
 
+        return toDetail(repository.save(lab));
+    }
+
+    @Transactional
+    public LabDetailResponse setArchived(UUID id, boolean archived) {
+        Lab lab = findOrThrow(id);
+        lab.setArchived(archived);
         return toDetail(repository.save(lab));
     }
 
@@ -98,6 +118,18 @@ public class LabService {
         return repository.findById(id).orElseThrow(() -> ApiException.notFound("Lab not found."));
     }
 
+    private LabDetailResponse toDetail(Lab l) {
+        return toDetail(l, false);
+    }
+
+    private String normalizeFormat(String requested, String fallback) {
+        if (requested == null || requested.isBlank()) return fallback;
+        if (!requested.equals("html") && !requested.equals("markdown")) {
+            throw ApiException.badRequest("contentFormat must be 'html' or 'markdown'.");
+        }
+        return requested;
+    }
+
     private String joinTags(List<String> tags) {
         return tags == null ? "" : String.join(",", tags);
     }
@@ -110,12 +142,14 @@ public class LabService {
     private LabSummaryResponse toSummary(Lab l) {
         return new LabSummaryResponse(
                 l.getId(), l.getSlug(), l.getTitle(), l.getExcerpt(), l.getStatus(), l.getCategory(),
-                splitTags(l.getTags()), l.getIcon(), l.getLabDate(), l.getPublished());
+                splitTags(l.getTags()), l.getIcon(), l.getLabDate(), l.getPublished(), l.getArchived(),
+                l.getPriceCents(), l.getIsFree());
     }
 
-    private LabDetailResponse toDetail(Lab l) {
+    private LabDetailResponse toDetail(Lab l, boolean locked) {
         return new LabDetailResponse(
-                l.getId(), l.getSlug(), l.getTitle(), l.getExcerpt(), l.getContent(), l.getStatus(), l.getCategory(),
-                splitTags(l.getTags()), l.getIcon(), l.getLabDate(), l.getPublished());
+                l.getId(), l.getSlug(), l.getTitle(), l.getExcerpt(), locked ? "" : l.getContent(), l.getStatus(), l.getCategory(),
+                splitTags(l.getTags()), l.getIcon(), l.getLabDate(), l.getPublished(),
+                l.getArchived(), l.getContentFormat(), l.getPriceCents(), l.getIsFree(), locked);
     }
 }

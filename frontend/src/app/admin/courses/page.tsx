@@ -1,13 +1,23 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Pill } from "@/components/pill";
+import { ArchiveButton } from "@/components/admin/archive-button";
+import { ViewTabs } from "@/components/admin/view-tabs";
+import { setCourseArchived } from "@/actions/admin-courses";
 import { adminListCourses } from "@/lib/admin";
 import { formatPrice } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Courses · Admin" };
 
-export default async function AdminCoursesPage() {
-  const courses = await adminListCourses();
+export default async function AdminCoursesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string }>;
+}) {
+  const { view } = await searchParams;
+  const showArchived = view === "archived";
+  const all = await adminListCourses();
+  const courses = all.filter((c) => c.archived === showArchived);
 
   return (
     <div>
@@ -21,9 +31,18 @@ export default async function AdminCoursesPage() {
         </Link>
       </div>
 
-      <div className="mt-6 overflow-hidden rounded-[14px] border border-border-faint">
+      <ViewTabs
+        basePath="/admin/courses"
+        showArchived={showArchived}
+        activeCount={all.filter((c) => !c.archived).length}
+        archivedCount={all.filter((c) => c.archived).length}
+      />
+
+      <div className="mt-4 overflow-hidden rounded-[14px] border border-border-faint">
         {courses.length === 0 ? (
-          <p className="px-5 py-6 text-sm text-text-dim">No courses yet.</p>
+          <p className="px-5 py-6 text-sm text-text-dim">
+            {showArchived ? "No archived courses." : "No courses yet."}
+          </p>
         ) : (
           <table className="w-full text-sm">
             <thead className="bg-surface-alt text-left font-mono text-xs uppercase tracking-wide text-text-faint">
@@ -31,6 +50,7 @@ export default async function AdminCoursesPage() {
                 <th className="px-5 py-3 font-medium">Title</th>
                 <th className="px-5 py-3 font-medium">Price</th>
                 <th className="px-5 py-3 font-medium">Published</th>
+                <th className="px-5 py-3 text-right font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -50,6 +70,13 @@ export default async function AdminCoursesPage() {
                     <Pill tone={c.published ? "teal" : "default"}>
                       {c.published ? "Published" : "Draft"}
                     </Pill>
+                  </td>
+                  <td className="px-5 py-3 text-right">
+                    <ArchiveButton
+                      variant="link"
+                      archived={c.archived}
+                      action={setCourseArchived.bind(null, c.id, !c.archived, undefined)}
+                    />
                   </td>
                 </tr>
               ))}

@@ -11,7 +11,7 @@ export default function NewCoursePage() {
       <p className="mt-2 text-sm text-text-dim">
         You&apos;ll add sections and lessons on the next screen, once the course exists.
       </p>
-      <div className="mt-6 max-w-2xl">
+      <div className="mt-6 max-w-4xl">
         <CourseForm action={createCourse} submitLabel="Create course" />
       </div>
     </div>

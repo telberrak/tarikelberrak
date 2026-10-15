@@ -26,6 +26,9 @@ public class PaymentService {
     private final UserRepository userRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final MailService mailService;
+    private final ArticleRepository articleRepository;
+    private final LabRepository labRepository;
+    private final ContentPurchaseRepository contentPurchaseRepository;
 
     @Value("${app.site-url}")
     private String siteUrl;
@@ -37,7 +40,13 @@ public class PaymentService {
             CourseRepository courseRepository,
             UserRepository userRepository,
             EnrollmentRepository enrollmentRepository,
-            MailService mailService) {
+            MailService mailService,
+            ArticleRepository articleRepository,
+            LabRepository labRepository,
+            ContentPurchaseRepository contentPurchaseRepository) {
+        this.articleRepository = articleRepository;
+        this.labRepository = labRepository;
+        this.contentPurchaseRepository = contentPurchaseRepository;
         this.courseRepository = courseRepository;
         this.userRepository = userRepository;
         this.enrollmentRepository = enrollmentRepository;
@@ -47,7 +56,7 @@ public class PaymentService {
     @Transactional(readOnly = true)
     public String createCheckoutSession(UUID userId, String courseSlug) throws StripeException {
         User user = userRepository.findById(userId).orElseThrow(() -> ApiException.unauthorized("Sign in first."));
-        Course course = courseRepository.findBySlugAndPublishedTrue(courseSlug)
+        Course course = courseRepository.findBySlugAndPublishedTrueAndArchivedFalse(courseSlug)
                 .orElseThrow(() -> ApiException.notFound("Course not found."));
 
         if (course.getIsFree() || course.getPriceCents() <= 0) {
@@ -68,7 +77,7 @@ public class PaymentService {
                 .addLineItem(SessionCreateParams.LineItem.builder()
                         .setQuantity(1L)
                         .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
-                                .setCurrency("eur")
+                                .setCurrency("usd")
                                 .setUnitAmount((long) course.getPriceCents())
                                 .setProductData(SessionCreateParams.LineItem.PriceData.ProductData.builder()
                                         .setName(course.getTitle())
@@ -82,6 +91,59 @@ public class PaymentService {
 
         Session session = Session.create(params);
         return session.getUrl();
+    }
+
+    private record ContentRef(UUID id, String title, String excerpt, int priceCents, boolean isFree, String path) {
+    }
+
+    private ContentRef resolveContent(ContentType type, String slug) {
+        return switch (type) {
+            case article -> articleRepository.findBySlugAndPublishedTrueAndArchivedFalse(slug)
+                    .map(a -> new ContentRef(a.getId(), a.getTitle(), a.getExcerpt(), a.getPriceCents(), a.getIsFree(), "/articles/" + slug))
+                    .orElseThrow(() -> ApiException.notFound("Article not found."));
+            case lab -> labRepository.findBySlugAndPublishedTrueAndArchivedFalse(slug)
+                    .map(l -> new ContentRef(l.getId(), l.getTitle(), l.getExcerpt(), l.getPriceCents(), l.getIsFree(), "/labs/" + slug))
+                    .orElseThrow(() -> ApiException.notFound("Lab not found."));
+        };
+    }
+
+    @Transactional(readOnly = true)
+    public String createContentCheckoutSession(UUID userId, ContentType type, String slug) throws StripeException {
+        User user = userRepository.findById(userId).orElseThrow(() -> ApiException.unauthorized("Sign in first."));
+        ContentRef content = resolveContent(type, slug);
+
+        if (content.isFree() || content.priceCents() <= 0) {
+            throw ApiException.badRequest("This item is free - no purchase needed.");
+        }
+
+        if (contentPurchaseRepository.existsByUserIdAndContentTypeAndContentId(userId, type, content.id())) {
+            return siteUrl + content.path();
+        }
+
+        SessionCreateParams params = SessionCreateParams.builder()
+                .setMode(SessionCreateParams.Mode.PAYMENT)
+                .setCustomerEmail(user.getEmail())
+                .setCustomerCreation(SessionCreateParams.CustomerCreation.ALWAYS)
+                .putMetadata("user_id", userId.toString())
+                .putMetadata("content_type", type.name())
+                .putMetadata("content_id", content.id().toString())
+                .putMetadata("content_slug", slug)
+                .addLineItem(SessionCreateParams.LineItem.builder()
+                        .setQuantity(1L)
+                        .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
+                                .setCurrency("usd")
+                                .setUnitAmount((long) content.priceCents())
+                                .setProductData(SessionCreateParams.LineItem.PriceData.ProductData.builder()
+                                        .setName(content.title())
+                                        .setDescription(content.excerpt())
+                                        .build())
+                                .build())
+                        .build())
+                .setSuccessUrl(siteUrl + content.path() + "?checkout=success")
+                .setCancelUrl(siteUrl + content.path() + "?checkout=cancelled")
+                .build();
+
+        return Session.create(params).getUrl();
     }
 
     @Transactional(readOnly = true)
@@ -116,6 +178,10 @@ public class PaymentService {
         if (session == null) return;
 
         Map<String, String> metadata = session.getMetadata();
+        if (metadata.get("content_type") != null) {
+            handleContentPurchase(session, metadata);
+            return;
+        }
         String userIdStr = metadata.get("user_id");
         String courseIdStr = metadata.get("course_id");
         if (userIdStr == null || courseIdStr == null) return;
@@ -143,7 +209,56 @@ public class PaymentService {
         mailService.sendPurchaseReceipt(email, course.getTitle(), amountLabel);
     }
 
+    private void handleContentPurchase(Session session, Map<String, String> metadata) {
+        String userIdStr = metadata.get("user_id");
+        String contentIdStr = metadata.get("content_id");
+        if (userIdStr == null || contentIdStr == null) return;
+
+        ContentType type;
+        try {
+            type = ContentType.valueOf(metadata.get("content_type"));
+        } catch (IllegalArgumentException e) {
+            return;
+        }
+
+        UUID userId = UUID.fromString(userIdStr);
+        UUID contentId = UUID.fromString(contentIdStr);
+        User user = userRepository.findById(userId).orElse(null);
+        if (user == null) return;
+
+        String title;
+        int priceCents;
+        if (type == ContentType.article) {
+            Article article = articleRepository.findById(contentId).orElse(null);
+            if (article == null) return;
+            title = article.getTitle();
+            priceCents = article.getPriceCents();
+        } else {
+            Lab lab = labRepository.findById(contentId).orElse(null);
+            if (lab == null) return;
+            title = lab.getTitle();
+            priceCents = lab.getPriceCents();
+        }
+
+        // Stripe retries deliveries, so recording a purchase must be idempotent.
+        if (!contentPurchaseRepository.existsByUserIdAndContentTypeAndContentId(userId, type, contentId)) {
+            contentPurchaseRepository.save(ContentPurchase.builder()
+                    .userId(userId)
+                    .contentType(type)
+                    .contentId(contentId)
+                    .stripePaymentIntentId(session.getPaymentIntent())
+                    .build());
+            String email = session.getCustomerDetails() != null ? session.getCustomerDetails().getEmail() : user.getEmail();
+            mailService.sendContentReceipt(email, title, formatAmount(priceCents));
+        }
+
+        if (session.getCustomer() != null) {
+            user.setStripeCustomerId(session.getCustomer());
+            userRepository.save(user);
+        }
+    }
+
     private String formatAmount(int cents) {
-        return "€" + BigDecimal.valueOf(cents, 2).toPlainString();
+        return "$" + BigDecimal.valueOf(cents, 2).toPlainString();
     }
 }

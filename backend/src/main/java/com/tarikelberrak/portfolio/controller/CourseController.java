@@ -25,7 +25,7 @@ public class CourseController {
     }
 
     @GetMapping("/{slug}")
-    public CourseSummaryResponse getBySlug(@PathVariable String slug) {
+    public CourseDetailResponse getBySlug(@PathVariable String slug) {
         return courseService.getBySlug(slug);
     }
 

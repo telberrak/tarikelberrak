@@ -139,3 +139,49 @@ h3,
     padding-bottom: 96px;
   }
 }
+
+/* Rich-text content: rendered on public pages and used as the editor surface. */
+.rich-content {
+  font-family: var(--font-source-serif), Georgia, serif;
+  font-size: 17px;
+  line-height: 1.75;
+  color: var(--color-text-body);
+}
+.rich-content > * + * { margin-top: 1.25rem; }
+.rich-content h1,
+.rich-content h2,
+.rich-content h3,
+.rich-content h4 {
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  line-height: 1.25;
+}
+.rich-content h1 { font-size: 1.875rem; margin-top: 2.5rem; }
+.rich-content h2 { font-size: 1.5rem; margin-top: 2.5rem; }
+.rich-content h3 { font-size: 1.25rem; margin-top: 2rem; }
+.rich-content h4 { font-size: 1.05rem; margin-top: 1.5rem; }
+.rich-content ul { margin-left: 1.25rem; list-style: disc; }
+.rich-content ol { margin-left: 1.25rem; list-style: decimal; }
+.rich-content li + li { margin-top: 0.5rem; }
+.rich-content li > p { margin: 0; }
+.rich-content blockquote {
+  border-left: 2px solid var(--color-amber);
+  padding-left: 1.25rem;
+  font-style: italic;
+  color: var(--color-text-primary);
+}
+.rich-content pre {
+  overflow-x: auto;
+  border: 1px solid var(--color-border-faint);
+  border-radius: 14px;
+  background: var(--color-surface);
+  padding: 1.25rem;
+  font-family: var(--font-plex-mono), ui-monospace, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.rich-content code { font-family: var(--font-plex-mono), ui-monospace, monospace; font-size: 0.9em; }
+.rich-content a { color: var(--color-teal); text-decoration: underline; text-underline-offset: 2px; }
+.rich-content hr { border: 0; border-top: 1px solid var(--color-border-faint); }
+.rich-content mark { border-radius: 3px; padding: 0 0.15em; color: inherit; }
