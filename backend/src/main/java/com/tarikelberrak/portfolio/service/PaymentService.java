@@ -1,5 +1,6 @@
 package com.tarikelberrak.portfolio.service;
 
+import com.stripe.exception.EventDataObjectDeserializationException;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Event;
@@ -174,7 +175,20 @@ public class PaymentService {
         }
 
         EventDataObjectDeserializer deserializer = event.getDataObjectDeserializer();
-        Session session = (Session) deserializer.getObject().orElse(null);
+        // getObject() is empty when the event's API version differs from the one this SDK is
+        // pinned to (the account / endpoint version is set in the Stripe dashboard). The
+        // signature is already verified, so fall back to Stripe's lenient deserialization
+        // rather than silently dropping a paid purchase.
+        Session session;
+        if (deserializer.getObject().isPresent()) {
+            session = (Session) deserializer.getObject().get();
+        } else {
+            try {
+                session = (Session) deserializer.deserializeUnsafe();
+            } catch (EventDataObjectDeserializationException e) {
+                throw new IllegalStateException("Could not read Stripe event " + event.getId(), e);
+            }
+        }
         if (session == null) return;
 
         Map<String, String> metadata = session.getMetadata();
