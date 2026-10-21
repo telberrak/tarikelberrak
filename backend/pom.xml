@@ -19,7 +19,7 @@
 
   <properties>
     <java.version>21</java.version>
-    <jjwt.version>0.12.6</jjwt.version>
+    <jjwt.version>0.13.0</jjwt.version>
     <stripe.version>28.2.0</stripe.version>
     <!-- Spring Boot 3.3.5 manages 1.19.x, whose Docker client (API 1.32) is rejected by
          Docker Engine 29+ ("Could not find a valid Docker environment"). -->
